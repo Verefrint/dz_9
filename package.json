@@ -1,0 +1,23 @@
+{
+  "name": "dz_9_reinstall",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@chainlink/contracts": "^1.3.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat": "^2.22.18",
+    "typechain": "^8.3.2"
+  },
+  "dependencies": {
+    "@chainlink/test-helpers": "^0.0.7-alpha",
+    "hardhat-tracer": "^3.1.0"
+  }
+}
