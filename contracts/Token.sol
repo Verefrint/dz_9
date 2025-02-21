@@ -6,22 +6,25 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 error SmallFee();
-error NotEnoughUsdc();
 
 contract Token is ERC721, ERC721URIStorage {
 
-    string TOKEN_URI;
+    string constant i_TOKEN_URI = "https://ipfs.io/ipfs/bafkreievgibi55znfubyt7u4zeh45bq3vkh3jy3bsnkpj7edamos4jrepi";
 
-    uint256 constant tokenPrice = 1000; //10$
+    uint256 constant USDC_PRICE = 1_000_000_0 ; //10$
 
     address owner = 0x94fD0181973d7304b7654C4c0AdED1b5a140Db7D;
+
+    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
+    uint256 public constant NFT_PRICE_USD = 10 * 1e18; // $10 with 18 decimal precision
+
+    uint private tokenId = 1;
 
     AggregatorV3Interface priceFeedEth;
     AggregatorV3Interface priceFeedUsdc;
 
-    constructor(string memory _tokenUri) ERC721("Token", "TK") {
-        TOKEN_URI = _tokenUri;
-
+    constructor() ERC721("Token", "TK") {
         /**
         * Network: Sepolia
         * Aggregator: ETH/USD
@@ -42,39 +45,41 @@ contract Token is ERC721, ERC721URIStorage {
         priceFeedUsdc = AggregatorV3Interface(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
     }
 
-    function buyWithEth(uint tokenId) external payable returns(uint) {
-        (, int256 answer, , , ) = priceFeedEth.latestRoundData();
-        uint pr = uint256(answer);
+    function getNFTPriceInETH() public view returns (uint256 ethAmount) {
+        uint256 ethPrice = getLatestETHPrice();
+        return (NFT_PRICE_USD / ethPrice) * 1e18;//convert  
+    }
 
-        uint amountUSD  = (msg.value * pr) / 1e18;
+    function getLatestETHPrice() public view returns (uint256 price) {
+        (, int256 priceRaw, , , ) = priceFeedEth.latestRoundData(); //2500 * 1e18
+        require(priceRaw > 0, "Invalid price data");
 
-        require(amountUSD >= tokenPrice, SmallFee());
+        return uint256(priceRaw) * 1e10; //  Convert from 8 to 18 decimals
+    }
+
+    function buyWithEth() external payable returns(uint) {
+        require(msg.value >= getNFTPriceInETH(), SmallFee());
 
         payable(owner).transfer(msg.value);
 
-        return buy(tokenId, msg.sender);
+        return mint(msg.sender);
     }
 
-    function buyWithUsdc(uint tokenId, uint _usdc_amount) external payable returns(uint) {
-        IERC20 usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    function buyWithUsdc(uint _usdc_amount) external payable returns(uint) {
+        IERC20 usdc = IERC20(USDC_ADDRESS);
 
-        require(usdc.allowance(msg.sender, address(this)) >= _usdc_amount, NotEnoughUsdc());
-
-        (, int256 answer, , , ) = priceFeedUsdc.latestRoundData();
-        uint pr = uint256(answer);
-
-        uint amountUSD  = (_usdc_amount * 1e8) / pr; 
-
-        require(amountUSD >= tokenPrice, SmallFee());
+        require(_usdc_amount >= USDC_PRICE, SmallFee());
 
         usdc.transferFrom(msg.sender, owner, _usdc_amount);
 
-        return buy(tokenId, msg.sender);
+        return mint(msg.sender);
     }
 
-    function buy(uint tokenId, address buyer) private returns(uint) {
+    function mint(address buyer) private returns(uint) {
+        tokenId++;
+
         ERC721._safeMint(buyer, tokenId);
-        ERC721URIStorage._setTokenURI(tokenId, TOKEN_URI);
+        ERC721URIStorage._setTokenURI(tokenId, i_TOKEN_URI);
 
         return tokenId;
     }
@@ -87,9 +92,8 @@ contract Token is ERC721, ERC721URIStorage {
         return super.tokenURI(tokenId);
     }
 
-
      function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
-        ERC721._burn(tokenId);
+        super._burn(tokenId);
      }
 }
 
